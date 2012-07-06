@@ -64,7 +64,7 @@ command: create|add|push|pull
         options[:description] = val
     end
 
-    opts.on("--[no]private", "(create-repo only): Create a private repository.") do |val|
+    opts.on("--[no-]private", "(create-repo only): Create a private repository.") do |val|
         options[:private] = val
     end
 
@@ -95,8 +95,13 @@ def host_options(options)
     hostname = options[:hostname] && "--hostname #{options[:hostname]} " || ""
     username = options[:username] && "--username #{options[:username]} " || ""
     password = options[:password] && "--password #{options[:password]} " || ""
-    priv = options[:private] && "--private #{options[:private]} " || ""
-    return hostname + username + password + priv
+    priv = options[:private] && options[:private] != "false" && "--private " || ""
+    hostname + username + password + priv
+end
+
+def probe_repository(url)
+    %x(git ls-remote #{url})
+    $?.success?
 end
 
 commands = {
@@ -111,11 +116,19 @@ commands = {
     end,
 
     "push" => lambda do
-        superproject_name = File.split(gitdir)[1]
-        annotation = "(*#{superproject_name})"
-        message = "Pushed lib \"#{options[:libname]}\""
-        sha, success = call "#{gitsubtree} split --message '#{message}' --annotate '#{annotation}' --rejoin --prefix #{options[:prefix]}"
-        run "git push #{options[:url]} #{sha}:refs/heads/#{options[:refspec]}" unless not success
+        abort "No such directory '#{options[:libname]}'" unless Dir.exists? options[:prefix]
+        
+        # If the repository doesn't exist, it's created for you
+        if !probe_repository(options[:url])
+            puts "Repository doesn't exist, creating..."
+            commands["create"].call()
+        else
+            superproject_name = File.split(gitdir)[1]
+            annotation = "(*#{superproject_name})"
+            message = "Pushed lib \"#{options[:libname]}\""
+            sha, success = call "#{gitsubtree} split --message '#{message}' --annotate '#{annotation}' --rejoin --prefix #{options[:prefix]}"
+            run "git push #{options[:url]} #{sha}:refs/heads/#{options[:refspec]}" unless not success
+        end
     end,
 
     "pull" => lambda do
