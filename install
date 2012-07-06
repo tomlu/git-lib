@@ -1,0 +1,10 @@
+#!/usr/local/bin/ruby
+# Call with: sudo ./install
+
+name = 'git-lib'
+git_path = %x(which git)
+git_root = File.split(File.split(git_path)[0])[0]
+gitcore_path = File.join(git_root, 'libexec/git-core')
+install_path = File.join(gitcore_path, name)
+%x(cp #{name}.rb #{install_path})
+%x(chmod +x #{install_path})
