@@ -28,6 +28,7 @@ options = {}
 options[:hostname] = getconfig("host.hostname")
 options[:username] = getconfig("host.username")
 options[:password] = getconfig("host.password")
+options[:private] = getconfig("host.private")
 options[:refspec] = 'master'
 options[:description] = ''
 
@@ -63,6 +64,10 @@ command: create|add|push|pull
         options[:description] = val
     end
 
+    opts.on("--[no]private", "(create-repo only): Create a private repository.") do |val|
+        options[:private] = val
+    end
+
     opts.on("--branch [REFSPEC]", "(push, pull only): Specifies the remote branch to sync with. Default is master.") do |val|
         options[:refspec] = val
     end
@@ -90,7 +95,8 @@ def host_options(options)
     hostname = options[:hostname] && "--hostname #{options[:hostname]} " || ""
     username = options[:username] && "--username #{options[:username]} " || ""
     password = options[:password] && "--password #{options[:password]} " || ""
-    return hostname + username + password
+    priv = options[:private] && "--private #{options[:private]} " || ""
+    return hostname + username + password + priv
 end
 
 commands = {
