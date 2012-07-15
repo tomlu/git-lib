@@ -83,7 +83,7 @@ def host_options(options)
 end
 
 def probe_repository(url)
-    %x(git ls-remote #{url})
+    %x(git ls-remote #{url} 2>/dev/null)
     $?.success?
 end
 
