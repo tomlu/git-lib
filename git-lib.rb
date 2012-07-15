@@ -78,7 +78,8 @@ githost = 'git host'
 
 def host_options(options)
     account = options[:account] && "--account #{options[:account]} " || ""
-    return account
+    desc = options[:description] && "--description \"#{options[:description]}\" " || ""
+    return account + desc
 end
 
 def probe_repository(url)
