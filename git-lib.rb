@@ -25,10 +25,7 @@ end
 # Options
 
 options = {}
-options[:hostname] = getconfig("host.hostname")
-options[:username] = getconfig("host.username")
-options[:password] = getconfig("host.password")
-options[:private] = getconfig("host.private")
+options[:account] = getconfig("host.account")
 options[:refspec] = 'master'
 options[:description] = ''
 
@@ -43,16 +40,8 @@ Usage: git-lib [options] command lib-name
 command: create|add|push|pull
 "
 
-    opts.on("--hostname [HOST]", "The repository host (eg. bitbucket). If omitted, read from git config host.hostname.") do |val|
-        options[:hostname] = val
-    end
-    
-    opts.on("--username [USERNAME]", "The repository username. If omitted, read from git config host.username.") do |val|
-        options[:username] = val
-    end
-
-    opts.on("--password [PASSWORD]", "The repository password. If omitted, read from git config host.password.") do |val|
-        options[:password] = val
+    opts.on("--account [ACCOUNT]", "The repository account used for git-host. If omitted, read from git config.host.account.") do |val|
+        options[:account] = val
     end
 
     opts.on("--prefix [PREFIX]", "The path to the lib. If omitted, pwd/<lib-name> is used.") do |val|
@@ -62,10 +51,6 @@ command: create|add|push|pull
 
     opts.on("--description [DESCRIPTION]", "(create only): Adds a description to the repository.") do |val|
         options[:description] = val
-    end
-
-    opts.on("--[no-]private", "(create-repo only): Create a private repository.") do |val|
-        options[:private] = val
     end
 
     opts.on("--branch [REFSPEC]", "(push, pull only): Specifies the remote branch to sync with. Default is master.") do |val|
@@ -92,11 +77,8 @@ gitsubtree = 'git subtree'
 githost = 'git host'
 
 def host_options(options)
-    hostname = options[:hostname] && "--hostname #{options[:hostname]} " || ""
-    username = options[:username] && "--username #{options[:username]} " || ""
-    password = options[:password] && "--password #{options[:password]} " || ""
-    priv = options[:private] && options[:private] != "false" && "--private " || ""
-    hostname + username + password + priv
+    account = options[:account] && "--account #{options[:account]} " || ""
+    return account
 end
 
 def probe_repository(url)
