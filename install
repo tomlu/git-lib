@@ -1,16 +1,24 @@
 #!/usr/local/bin/ruby
 # Call with: sudo ./install [--symlink]
 
-name = 'git-lib'
-git_path = %x(which git)
-git_root = File.split(File.split(git_path)[0])[0]
-gitcore_path = File.join(git_root, 'libexec/git-core')
-install_path = File.join(gitcore_path, name)
+def install_file(name)
+	git_path = %x(which git)
+	git_root = File.split(File.split(git_path)[0])[0]
+	gitcore_path = File.join(git_root, 'libexec/git-core')
 
-if ARGV[0] == '--symlink' then
-    script_path = File.join(Dir.pwd, "#{name}.rb")
-    %x(ln -s #{script_path} #{install_path})
-else
-    %x(cp #{name}.rb #{install_path})
-    %x(chmod +x #{install_path})
+	source_name = name
+	symlink_name = File.basename(name, File.extname(name))
+	install_path = File.join(gitcore_path, symlink_name)
+
+	if ARGV[0] == '--symlink' then
+	    script_path = File.join(Dir.pwd, "#{source_name}")
+	    %x(ln -s #{script_path} #{install_path})
+	else
+	    %x(cp #{source_name} #{install_path})
+	    %x(chmod +x #{install_path})
+	end
 end
+
+
+install_file 'git-lib.rb'
+install_file 'git-split-lib.sh'

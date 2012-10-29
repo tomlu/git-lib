@@ -76,12 +76,11 @@ Command description:
 end
 option_parser.parse!
 
-
 ########################################
 # Commands
 #
 
-gitsubtree = 'git subtree'
+gitsubtree = 'git split-lib'
 githost = 'git host'
 
 def host_options(options)
@@ -96,34 +95,90 @@ def probe_repository(url)
     $?.success?
 end
 
+def ensure_clean()
+    %x(git diff-index HEAD --exit-code --quiet 2>&1)
+    abort "Working tree has modifications.  Cannot pull." unless $?.success?
+    %x(git diff-index --cached HEAD --exit-code --quiet 2>&1) 
+    abort "Index has modifications.  Cannot pull." unless $?.success?
+end
+
 commands = {
+
+    "split" => lambda do
+        %x(git fetch #{options[:url]} #{options[:refspec]})
+        split_sha, success = call "#{gitsubtree} --prefix #{options[:prefix]} --with fetch_head"
+        puts split_sha
+    end,
 
     "push" => lambda do
         abort "No such directory '#{options[:libname]}'" unless Dir.exists? options[:prefix]
-        
+
+        puts "Probing remote repository..."
+
+        # Fetch remote branch
+        %x(git fetch #{options[:url]} #{options[:refspec]} 2>& 1)
+        fetch_success = $?.success?
+        with = fetch_success && "--with fetch_head" || ""
+
         # If the repository doesn't exist, it's created for you
-        if !probe_repository(options[:url])
+        if !fetch_success && !probe_repository(options[:url])
             puts "Repository doesn't exist, creating..."
             system("#{githost} create-repo #{options[:libname]} #{host_options(options)}")
         end
 
-        superproject_name = File.split(gitdir)[1]
-        annotation = "(*#{superproject_name})"
-        message = "Pushed lib \"#{options[:libname]}\""
-        sha, success = call "#{gitsubtree} split --message '#{message}' --annotate '#{annotation}' --rejoin --prefix #{options[:prefix]}"
-        run "git push #{options[:url]} #{sha}:refs/heads/#{options[:refspec]}" unless not success
+        puts "Splitting lib..."
+        split_sha, success = call "#{gitsubtree} --prefix #{options[:prefix]} #{with}"
+        run "git push #{options[:url]} #{split_sha}:refs/heads/#{options[:refspec]}" if success
     end,
 
     "pull" => lambda do
-        if !Dir.exists? options[:prefix] then
-            abort "No such repository: '#{options[:url]}'" unless probe_repository(options[:url])
+        ensure_clean()
 
+        puts "Fetching remote lib..."
+        %x(git fetch #{options[:url]} #{options[:refspec]})
+        abort "Could not fetch from repository: #{options[:url]}" unless $?.success?
+
+        if !Dir.exists? options[:prefix]
+            puts "Adding lib..."
+
+            %x(git read-tree --prefix="#{options[:prefix]}" fetch_head)
+            abort "git read-tree failed" unless $?.success?
+
+            %x(git checkout -- "#{options[:prefix]}")
+            abort "git checkout tree failed" unless $?.success?
+
+            tree = %x(git write-tree).strip
+            abort "git write-tree failed" unless $?.success?
+            
+            rev = %x(git rev-parse --revs-only fetch_head).split(' ')[0]
+            headrev = %x(git rev-parse head)
+            if !headrev.empty? && headrev != rev then
+                headp = "-p #{headrev}".strip
+            else
+                headp = ""
+            end
+            
             message = "Add lib \"#{options[:libname]}\""
-            run "#{gitsubtree} add --message '#{message}' --prefix #{options[:prefix]} #{options[:url]} #{options[:refspec]}"
-        end
 
-        message = "Merged lib \"#{options[:libname]}\""
-        run "#{gitsubtree} pull --message '#{message}' --prefix #{options[:prefix]} #{options[:url]} #{options[:refspec]}"
+            commit = %x(git commit-tree #{tree} #{headp} -p #{rev} -m '#{message}')
+            abort "git commit failed" unless $?.success?
+
+            %x(git reset #{commit})
+        else
+            puts "Rejoining lib..."
+            split_sha, success = call "#{gitsubtree} --prefix #{options[:prefix]} --with fetch_head"
+            abort "Split failed" unless success
+
+            puts "Merging lib..."
+
+            if !%x(git rev-list #{split_sha}..fetch_head).empty?
+                %x(git merge -s ours -m 'Rejoin lib "#{options[:libname]}"' #{split_sha})
+                message = "Merged lib \"#{options[:libname]}\""
+                %x(git merge -Xsubtree=#{options[:prefix]} --message='#{message}' fetch_head)
+            else
+                puts "Everything up-to-date"
+            end
+        end
     end,
 }
 
