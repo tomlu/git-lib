@@ -138,6 +138,14 @@ commands = {
         %x(git fetch #{options[:url]} #{options[:refspec]})
         abort "Could not fetch from repository: #{options[:url]}" unless $?.success?
 
+        fetch_rev = %x(git rev-parse --revs-only fetch_head).split(' ')[0].strip
+        head_rev = %x(git rev-parse head).strip
+        if !head_rev.empty? && head_rev != fetch_rev then
+            headp = "-p #{head_rev}"
+        else
+            headp = ""
+        end
+
         if !Dir.exists? options[:prefix]
             puts "Adding lib..."
 
@@ -147,23 +155,7 @@ commands = {
             %x(git checkout -- "#{options[:prefix]}")
             abort "git checkout tree failed" unless $?.success?
 
-            tree = %x(git write-tree).strip
-            abort "git write-tree failed" unless $?.success?
-            
-            rev = %x(git rev-parse --revs-only fetch_head).split(' ')[0]
-            headrev = %x(git rev-parse head)
-            if !headrev.empty? && headrev != rev then
-                headp = "-p #{headrev}".strip
-            else
-                headp = ""
-            end
-            
-            message = "Add lib \"#{options[:libname]}\""
-
-            commit = %x(git commit-tree #{tree} #{headp} -p #{rev} -m '#{message}')
-            abort "git commit failed" unless $?.success?
-
-            %x(git reset #{commit})
+            commit_message = "Add lib \"#{options[:libname]}\""
         else
             puts "Rejoining lib..."
             split_sha, success = call "#{gitsubtree} --prefix #{options[:prefix]} --with fetch_head"
@@ -173,11 +165,23 @@ commands = {
 
             if !%x(git rev-list #{split_sha}..fetch_head).empty?
                 %x(git merge -s ours -m 'Rejoin lib "#{options[:libname]}"' #{split_sha})
-                message = "Merged lib \"#{options[:libname]}\""
-                %x(git merge -Xsubtree=#{options[:prefix]} --message='#{message}' fetch_head)
+
+                commit_message = "Merged lib \"#{options[:libname]}\""
+                output = %x(git merge -Xsubtree=#{options[:prefix]} --message='#{commit_message}' -q --no-commit fetch_head 2>&1)
+                abort "Merge failed:\n#{output}" unless $?.success?
             else
                 puts "Everything up-to-date"
             end
+        end
+
+        if commit_message
+            tree = %x(git write-tree).strip
+            abort "git write-tree failed" unless $?.success?
+            
+            commit = %x(git commit-tree #{tree} #{headp} -p #{fetch_rev} -m '#{commit_message}')
+            abort "git commit failed" unless $?.success?
+
+            %x(git reset #{commit})
         end
     end,
 }
