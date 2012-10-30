@@ -210,8 +210,8 @@ cmd_split()
 
 	# Add --with objects into cache
 	if [ -n "$with" ]; then
-		grl='git rev-list --topo-order --reverse --parents $with'
-		eval "$grl" |
+		parent_grl='git rev-list --topo-order --reverse --parents $with'
+		eval "$parent_grl" |
 		while read rev parents; do
 			cache_set $rev $rev
 		done
