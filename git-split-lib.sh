@@ -206,7 +206,7 @@ cmd_split()
 	debug "Splitting $dir..."
 	cache_setup || exit $?
 
-	merge_base=
+	grl='git rev-list --topo-order --reverse --parents $revs'
 
 	# Add --with objects into cache
 	if [ -n "$with" ]; then
@@ -216,13 +216,13 @@ cmd_split()
 			cache_set $rev $rev
 		done
 
+		# Optimisation: Only look at objects past merge base
 		merge_base="$(git merge-base $revs $with)"
 		if [ $? == 0 ]; then
-			merge_base="^$merge_base"
+			grl='git rev-list --topo-order --reverse --parents --ancestry-path $merge_base..$revs'
 		fi
 	fi
 
-	grl='git rev-list --topo-order --reverse --parents $revs $merge_base'
 	eval "$grl" |
 	while read rev parents; do
 		debug "Processing commit: $rev"
