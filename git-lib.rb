@@ -1,5 +1,6 @@
 #!/usr/local/bin/ruby
 require 'optparse'
+require 'fileutils'
 
 def getconfig(conf)
     output=`git config --get #{conf}`.strip
@@ -69,6 +70,14 @@ Command description:
         options[:password] = val
     end
 
+    opts.on("--abort", "Used to abort a lib pull.") do
+        options[:abort] = true
+    end
+
+    opts.on("--continue", "Used to continue after resolving merge conflicts during a lib pull.") do
+        options[:continue] = true
+    end
+
     opts.on_tail("-h", "--help", "Show this message.") do
         puts opts
         exit
@@ -102,6 +111,23 @@ def ensure_clean()
     abort "Index has modifications.  Cannot pull." unless $?.success?
 end
 
+def produce_merge_commit(head_rev, fetch_rev, commit_message)
+    if !head_rev.empty? && head_rev != fetch_rev then
+        headp = "-p #{head_rev}"
+    else
+        headp = ""
+    end
+
+    tree = %x(git write-tree).strip
+    abort "git write-tree failed" unless $?.success?
+    
+    commit = %x(git commit-tree #{tree} #{headp} -p #{fetch_rev} -m '#{commit_message}')
+    abort "git commit failed" unless $?.success?
+
+    %x(git reset #{commit})
+    abort "git reset failed" unless $?.success?
+end
+
 commands = {
 
     "split" => lambda do
@@ -132,57 +158,64 @@ commands = {
     end,
 
     "pull" => lambda do
-        ensure_clean()
+        git_dir = %x(git rev-parse --git-dir).strip
+        lib_pull_file = "#{git_dir}/LIB_PULL"
 
-        puts "Fetching remote lib..."
-        %x(git fetch #{options[:url]} #{options[:refspec]})
-        abort "Could not fetch from repository: #{options[:url]}" unless $?.success?
+        if (options[:abort] || options[:continue])
+            abort "Not currently in a lib pull" unless File.exists? lib_pull_file
+            head_rev, fetch_rev, libname = File.read(lib_pull_file).split(' ')
 
-        fetch_rev = %x(git rev-parse --revs-only fetch_head).split(' ')[0].strip
-        head_rev = %x(git rev-parse head).strip
-        if !head_rev.empty? && head_rev != fetch_rev then
-            headp = "-p #{head_rev}"
+            if (options[:abort])
+                %x(git reset --hard #{head_rev})
+            elsif (options[:continue])
+                commit_message = "Merged lib \"#{libname}\""
+            end
         else
-            headp = ""
-        end
+            ensure_clean()
+            libname = options[:libname]
 
-        if !Dir.exists? options[:prefix]
-            puts "Adding lib..."
+            puts "Fetching remote lib..."
+            %x(git fetch #{options[:url]} #{options[:refspec]})
+            abort "Could not fetch from repository: #{options[:url]}" unless $?.success?
 
-            %x(git read-tree --prefix="#{options[:prefix]}" fetch_head)
-            abort "git read-tree failed" unless $?.success?
+            fetch_rev = %x(git rev-parse --revs-only fetch_head).split(' ')[0].strip
+            head_rev = %x(git rev-parse head).strip
+            File.write(lib_pull_file, "#{head_rev} #{fetch_rev}")
 
-            %x(git checkout -- "#{options[:prefix]}")
-            abort "git checkout tree failed" unless $?.success?
+            if !Dir.exists? options[:prefix]
+                puts "Adding lib..."
 
-            commit_message = "Add lib \"#{options[:libname]}\""
-        else
-            puts "Rejoining lib..."
-            split_sha, success = call "#{gitsubtree} --prefix #{options[:prefix]} --with fetch_head"
-            abort "Split failed" unless success
+                %x(git read-tree --prefix="#{options[:prefix]}" fetch_head)
+                abort "git read-tree failed" unless $?.success?
 
-            puts "Merging lib..."
+                %x(git checkout -- "#{options[:prefix]}")
+                abort "git checkout tree failed" unless $?.success?
 
-            if !%x(git rev-list #{split_sha}..fetch_head).empty?
-                %x(git merge -s ours -m 'Rejoin lib "#{options[:libname]}"' #{split_sha})
-
-                commit_message = "Merged lib \"#{options[:libname]}\""
-                output = %x(git merge -Xsubtree=#{options[:prefix]} --message='#{commit_message}' -q --no-commit fetch_head 2>&1)
-                abort "Merge failed:\n#{output}" unless $?.success?
+                commit_message = "Add lib \"#{libname}\""
             else
-                puts "Everything up-to-date"
+                puts "Rejoining lib..."
+                split_sha, success = call "#{gitsubtree} --prefix #{options[:prefix]} --with fetch_head"
+                abort "Split failed" unless success
+
+                puts "Merging lib..."
+
+                if !%x(git rev-list #{split_sha}..fetch_head).empty?
+                    %x(git merge -s ours -m 'Rejoin lib "#{options[:libname]}"' #{split_sha})
+
+                    commit_message = "Merged lib \"#{libname}\""
+                    output = %x(git merge -Xsubtree=#{options[:prefix]} --message='#{commit_message}' -q --no-commit fetch_head 2>&1)
+                    abort 'Merge failed; Fix conflicts and then issue "git lib pull --continue"' unless $?.success?
+                else
+                    puts "Everything up-to-date"
+                end
             end
         end
 
         if commit_message
-            tree = %x(git write-tree).strip
-            abort "git write-tree failed" unless $?.success?
-            
-            commit = %x(git commit-tree #{tree} #{headp} -p #{fetch_rev} -m '#{commit_message}')
-            abort "git commit failed" unless $?.success?
-
-            %x(git reset #{commit})
+            produce_merge_commit(head_rev, fetch_rev, commit_message)
         end
+
+        FileUtils.rm(lib_pull_file)
     end,
 }
 
@@ -190,18 +223,20 @@ commands = {
 ########################################
 # Main
     
-if ARGV.length != 2 then
+if ARGV.length < 1 then
     puts option_parser
 else
     commandname = ARGV[0]
     options[:libname] = ARGV[1]
 
-    options[:url] = %x(#{githost} url-for #{options[:libname]} #{host_options(options)}).strip
-    exit(1) unless $?.success?
+    if !(options[:abort] || options[:continue])
+        options[:url] = %x(#{githost} url-for #{options[:libname]} #{host_options(options)}).strip
+        exit(1) unless $?.success?
 
-    if not options[:prefix] then
-        reldir = pwd[gitdir.length + 1..-1] || '.'
-        options[:prefix] = reldir != '.' && File.join(reldir, options[:libname]) || options[:libname]
+        if not options[:prefix] then
+            reldir = pwd[gitdir.length + 1..-1] || '.'
+            options[:prefix] = reldir != '.' && File.join(reldir, options[:libname]) || options[:libname]
+        end
     end
 
     command = commands[commandname]

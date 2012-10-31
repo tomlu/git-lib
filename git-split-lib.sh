@@ -92,6 +92,8 @@ cache_setup()
 		mkdir -p "$cachedir" || die "Can't create new cachedir: $cachedir"
 		debug "Using cachedir: $cachedir" >&2
 	fi
+	rm -f "$cachedir/latest_new"
+	rm -f "$cachedir/latest_old"
 }
 
 cache_get()
@@ -218,7 +220,7 @@ cmd_split()
 
 		# Optimisation: Only look at objects past merge base
 		merge_base="$(git merge-base $revs $with)"
-		if [ $? == 0 ]; then
+		if [ -n "$merge_base" ]; then
 			grl='git rev-list --topo-order --reverse --parents --ancestry-path $merge_base..$revs'
 		fi
 	fi
@@ -226,30 +228,31 @@ cmd_split()
 	eval "$grl" |
 	while read rev parents; do
 		debug "Processing commit: $rev"
-		exists=$(cache_get $rev)
-		if [ -n "$exists" ]; then
-			debug "  prior: $exists"
-			continue
-		fi
-		debug "  parents: $parents"
-		newparents=$(cache_get $parents)
-		debug "  newparents: $newparents"
-		
-		tree=$(subtree_for_commit $rev "$dir")
-		debug "  tree is: $tree"
+		newrev=$(cache_get $rev)
+		if [ -n "$newrev" ]; then
+			debug "  prior: $newrev"
+		else
+			debug "  parents: $parents"
+			newparents=$(cache_get $parents)
+			debug "  newparents: $newparents"
+			
+			tree=$(subtree_for_commit $rev "$dir")
+			debug "  tree is: $tree"
 
-		# ugly.  is there no better way to tell if this is a subtree
-		# vs. a mainline commit?  Does it matter?
-		if [ -z $tree ]; then
-			if [ -n "$newparents" ]; then
-				cache_set $rev $rev
+			# ugly.  is there no better way to tell if this is a subtree
+			# vs. a mainline commit?  Does it matter?
+			if [ -z $tree ]; then
+				if [ -n "$newparents" ]; then
+					cache_set $rev $rev
+				fi
+				continue
 			fi
-			continue
+
+			newrev=$(copy_or_skip "$rev" "$tree" "$newparents") || exit $?
+			debug "  newrev is: $newrev"
+			cache_set $rev $newrev
 		fi
 
-		newrev=$(copy_or_skip "$rev" "$tree" "$newparents") || exit $?
-		debug "  newrev is: $newrev"
-		cache_set $rev $newrev
 		cache_set latest_new $newrev
 		cache_set latest_old $rev
 	done || exit $?
