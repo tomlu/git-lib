@@ -52,3 +52,6 @@ Examples
 
 	# Fetching changes from other project
 	git lib pull libs/shared-code
+
+	# You can pass a branch name, otherwise "master" is assumed
+	git lib push libs/shared-code my-branch

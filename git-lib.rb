@@ -37,7 +37,7 @@ Dir.chdir(gitdir)
 option_parser = OptionParser.new do |opts|
   opts.banner = 
 "
-Usage: git-lib [options] command lib-name
+Usage: git-lib [options] command lib-name [ref]
 
 Command description:
   push      Pushes a new library. Creates if it doesn't exist.
@@ -233,6 +233,7 @@ else
 
         options[:prefix] = prefix
         options[:libname] = File.split(lib)[1]
+        options[:refspec] = ARGV[2] if ARGV.length >= 3
 
         options[:url] = %x(#{githost} url-for #{options[:libname]} #{host_options(options)}).strip
         exit(1) unless $?.success?
