@@ -25,7 +25,9 @@ Requirements
 ------------
 
 * git-host
+* git 1.7 or higher
 * Ruby 1.9 or higher
+* Only tested on OS X, I have no idea if it will work on anything else
 
 Installation
 ------------
@@ -37,13 +39,16 @@ Examples
 
 	# Create a new lib
 	git lib push libs/shared-code
-	(or cd libs; git lib push shared-code)
 
-	# In another repo, get that lib
+	# Or you can cd first
+	cd libs
+	git lib push shared-code
+
+	# In another repo, get that lib - the location doesn't have to match
 	git lib pull external-libs/shared-code
 
-	# After making some changes, push those back
+	# Push some changes upstream
 	git lib push external-libs/shared-code
 
-	# Fetching changes again
+	# Fetching changes from other project
 	git lib pull libs/shared-code
