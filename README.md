@@ -21,6 +21,8 @@ First, install and configure git-host. It's helpful to set up your projects to r
 
 After this, it's as simple as using `git lib push` and `git lib pull` as often as you would like to share changes between the projects.
 
+If you run into conflicts, resolve them and issue `git lib pull --continue` to mark resolution.
+
 Requirements
 ------------
 
@@ -55,3 +57,9 @@ Examples
 
 	# You can pass a branch name, otherwise "master" is assumed
 	git lib push libs/shared-code my-branch
+
+	# Mark conflicts as resolved
+	git lib pull --continue
+
+	# Abort conflict resolution
+	git lib pull --abort
