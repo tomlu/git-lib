@@ -49,11 +49,6 @@ Command description:
         options[:account] = val
     end
 
-    opts.on("--prefix [PREFIX]", "The path to the lib. If omitted, pwd/<lib-name> is used.") do |val|
-        options[:prefix] = val2bpivotaltracker
-        prefix_specified = true
-    end
-
     opts.on("--description [DESCRIPTION]", "(First push only): Adds a description to the repository.") do |val|
         options[:description] = val
     end
@@ -193,7 +188,7 @@ commands = {
 
                 commit_message = "Add lib \"#{libname}\""
             else
-                puts "Rejoining lib..."
+                puts "Splitting lib..."
                 split_sha, success = call "#{gitsubtree} --prefix #{options[:prefix]} --with fetch_head"
                 abort "Split failed" unless success
 
@@ -227,16 +222,20 @@ if ARGV.length < 1 then
     puts option_parser
 else
     commandname = ARGV[0]
-    options[:libname] = ARGV[1]
 
     if !(options[:abort] || options[:continue])
+        abort "Missing lib name" unless ARGV.length >= 2
+
+        lib = ARGV[1]
+
+        reldir = pwd[gitdir.length + 1..-1] || '.'
+        prefix = reldir != '.' && File.join(reldir, lib) || lib
+
+        options[:prefix] = prefix
+        options[:libname] = File.split(lib)[1]
+
         options[:url] = %x(#{githost} url-for #{options[:libname]} #{host_options(options)}).strip
         exit(1) unless $?.success?
-
-        if not options[:prefix] then
-            reldir = pwd[gitdir.length + 1..-1] || '.'
-            options[:prefix] = reldir != '.' && File.join(reldir, options[:libname]) || options[:libname]
-        end
     end
 
     command = commands[commandname]
