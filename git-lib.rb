@@ -175,7 +175,9 @@ commands = {
 
             fetch_rev = %x(git rev-parse --revs-only fetch_head).split(' ')[0].strip
             head_rev = %x(git rev-parse head).strip
-            File.write(lib_pull_file, "#{head_rev} #{fetch_rev}")
+            File.open(lib_pull_file, "w") do |f|
+                f.write "#{head_rev} #{fetch_rev}"
+            end
 
             if !Dir.exists? options[:prefix]
                 puts "Adding lib..."
