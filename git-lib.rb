@@ -229,6 +229,7 @@ else
         abort "Missing lib name" unless ARGV.length >= 2
 
         lib = ARGV[1]
+        lib = lib.chomp '/' # Remove trailing slash if present
 
         reldir = pwd[gitdir.length + 1..-1] || '.'
         prefix = reldir != '.' && File.join(reldir, lib) || lib
