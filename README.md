@@ -8,7 +8,7 @@ git-lib is an alternative to git-submodule. It targets the following usecase:
 
 * A single organisation with that wants to share code libraries between its projects
 * Many small, independent code libraries
-* Developement of these libraries mostly takes place in the context of the superproject
+* Development of these libraries mostly takes place in the context of the superproject
 
 With git-lib, you can split out and push a subdirectory to a separate repository (called a lib). This lib can then be pulled into other repositories. After this, changes can be shared between projects using git lib much as you would expect, with merge conflicts handled naturally.
 
