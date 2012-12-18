@@ -1,4 +1,4 @@
-#!/usr/local/bin/ruby
+#!/usr/bin/env ruby
 # Call with: sudo ./install [--symlink]
 
 def install_file(name)
