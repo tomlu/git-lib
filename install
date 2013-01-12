@@ -1,8 +1,15 @@
 #!/usr/bin/env ruby
 # Call with: sudo ./install [--symlink]
 
+require 'pathname'
+
 def install_file(name)
 	git_path = %x(which git)
+
+    if File.symlink? git_path
+        git_path = Pathname.new(git_path).realpath.to_s
+    end
+
 	git_root = File.split(File.split(git_path)[0])[0]
 	gitcore_path = File.join(git_root, 'libexec/git-core')
 
