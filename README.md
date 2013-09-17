@@ -12,21 +12,19 @@ git-lib is an alternative to git-submodule. It targets the following usecase:
 
 With git-lib, you can split out and push a subdirectory to a separate repository (called a lib). This lib can then be pulled into other repositories. After this, changes can be shared between projects using git lib much as you would expect, with merge conflicts handled naturally.
 
-git-lib is powered by [git-host](https://github.com/tomlu/git-host) and a modified version of Avery Pennarun's [git-subtree](https://github.com/apenwarr/git-subtree).
+git-lib is powered by a modified version of Avery Pennarun's [git-subtree](https://github.com/apenwarr/git-subtree).
 
-Documentation
--------------
+Workflow
+--------
 
-First, install and configure git-host. It's helpful to set up your projects to run off a default account so you don't have to keep passing the git-host account, but that's up to you.
-
-After this, it's as simple as using `git lib push` and `git lib pull` as often as you would like to share changes between the projects.
-
-If you run into conflicts, resolve them and issue `git lib pull --continue` to mark resolution.
+* Create a git-lib account that tells git-lib what url to use for your libs
+* Using your hosting service create a repository for each lib that you want to share
+* Issue `git lib push <lib>` in a repository that contains a reusable lib
+* In another repository, issue `git lib pull <lib>` for that lib
 
 Requirements
 ------------
 
-* [git-host](https://github.com/tomlu/git-host)
 * git 1.7 or higher
 * Ruby 1.9 or higher
 * Only tested on OS X, I have no idea if it will work on anything else
@@ -36,26 +34,35 @@ Installation
 
 Clone the repository and run `sudo ./install [--symlink]`
 
-Examples
---------
+Example
+-------
 
-	# Set up a new global git-host account and make it the default one
-	git host add --account my-org --hostname github --username myorg --password secr3t --global --default
+	# Set up a new global git-lib account for the organisation "myorg"
+	git lib account add myorg github
 
-	# Create a new lib
+    # Or you can explicitly spell out a url pattern
+    # %{account} and %{lib} are available as variables
+    git lib account add myorg git@github.org:myorg/%{lib}.git
+
+    # Next, log into "myorg" on github and create a lib called "shared-code"
+
+	# Push a fresh lib out to the newly create repository
+    cd ~/repos/my-awesome-repo
 	git lib push libs/shared-code
 
-	# Or you can cd first
+	# Or you can cd to the subdirectory first
 	cd libs
 	git lib push shared-code
 
-	# In another repo, get that lib - the location doesn't have to match
+	# Get that lib into a different repo - the location doesn't have to match
+    cd ~/repos/a-repo-that-wants-shared-code
 	git lib pull external-libs/shared-code
 
 	# Push some changes upstream
 	git lib push external-libs/shared-code
 
 	# Fetching changes from other project
+    cd ~/repos/my-awesome-repo
 	git lib pull libs/shared-code
 
 	# You can pass a branch name, otherwise "master" is assumed
