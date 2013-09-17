@@ -4,11 +4,11 @@ git-lib
 What is it?
 -----------
 
-git-lib is an alternative to git-submodule. It targets the following usecase:
+git-lib is an alternative to git-submodule. It targets the following use-case:
 
-* A single organisation with that wants to share code libraries between its projects
+* A single organization with that wants to share code libraries between its projects
 * Many small, independent code libraries
-* Development of these libraries mostly takes place in the context of the superproject
+* Development of these libraries mostly takes place in the context of the super-project
 
 With git-lib, you can split out and push a subdirectory to a separate repository (called a lib). This lib can then be pulled into other repositories. After this, changes can be shared between projects using git lib much as you would expect, with merge conflicts handled naturally.
 
@@ -43,7 +43,7 @@ Comparisons
 Workflow
 --------
 
-* Create a git-lib account that tells git-lib what url to use for your libs
+* Create a git-lib account that tells git-lib what URL to use for your libs
 * Using your hosting service create a repository for each lib that you want to share
 * Issue `git lib push <lib>` in a repository that contains a reusable lib
 * In another repository, issue `git lib pull <lib>` for that lib
@@ -63,14 +63,14 @@ Clone the repository and run `sudo ./install [--symlink]`
 Example
 -------
 
-	# Set up a new global git-lib account for the organisation "myorg"
-	git lib account add myorg github
+	# Set up a new global git-lib account for the organization "myorg"
+	git lib account add myorg GitHub
 
-    # Or you can explicitly spell out a url pattern
+    # Or you can explicitly spell out a URL pattern
     # %{account} and %{lib} are available as variables
     git lib account add myorg git@github.org:myorg/%{lib}.git
 
-    # Next, log into "myorg" on github and create a lib called "shared-code"
+    # Next, log into "myorg" on GitHub and create a lib called "shared-code"
 
 	# Push a fresh lib out to the newly create repository
     cd ~/repos/my-awesome-repo
