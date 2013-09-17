@@ -14,6 +14,32 @@ With git-lib, you can split out and push a subdirectory to a separate repository
 
 git-lib is powered by a modified version of Avery Pennarun's [git-subtree](https://github.com/apenwarr/git-subtree).
 
+Comparisons
+-----------
+
+### git-lib vs git-submodule
+
+**Pros**
+
+* git clone checks out the whole repository (including all git-libs) without any additional steps
+* Likewise, git push and pull are single-step
+* git branch/checkout will automatically branch all git-libs as expected
+
+**Cons**
+
+* History of lib is not as isolated as a full submodule
+* Slower to push on big repositories due to the need to split out the lib
+
+### git-lib vs git-subtree
+
+**Pros**
+
+* Simpler to use - simply use `git lib push <lib>` and `git lib pull <lib>`, splits and rejoins are worked out for you
+
+**Cons**
+
+* Not as flexible
+
 Workflow
 --------
 
